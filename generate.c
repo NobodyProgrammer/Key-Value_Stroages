@@ -6,7 +6,7 @@
 int main()
 {
     srand(time(NULL));
-    FILE *ouput = fopen("1.input", "w");
+    FILE *ouput = fopen("3.input", "w");
     int file_num = 0;
     long int array[5];
     long int key = 2147483648;
@@ -14,7 +14,7 @@ int main()
     char *buffer = malloc(sizeof(char) * 255);
     for (int i = 0; i < 5; ++i)
         value[i] = malloc(sizeof(char) * 128);
-    while (file_num <= 10000000)
+    while (file_num <= 10)
     {
         for (int i = 0; i < 5; ++i)
         {
@@ -24,7 +24,20 @@ int main()
 
             for (int j = 0; j < 128; ++j)
             {
-                value[i][j] = (rand() % 63) + 65;
+                int type = rand() % 3;
+                switch (type)
+                {
+                case 0:
+                    value[i][j] = (rand() % 10) + 48;
+                    break;
+                case 1:
+                    value[i][j] = (rand() % 10) + 65;
+                    break;
+
+                default:
+                    value[i][j] = (rand() % 10) + 97;
+                    break;
+                }
             }
             sprintf(buffer, "PUT %ld %s\n", array[i], value[i]);
             fputs(buffer, ouput);
