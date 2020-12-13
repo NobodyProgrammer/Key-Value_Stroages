@@ -6,10 +6,10 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
-int size = 100000;
-int out_buffer_size = 100000;
-int per = 2;
-char *output_file;
+int size = 5;
+int out_buffer_size = 10;
+char *output_file = "ex.output";
+bool isSuccess = false;
 struct myMemory
 {
     /* data */
@@ -41,27 +41,32 @@ void mapToDataBase(myMemory *memory, int m_count)
 {
     char *db_name = malloc(sizeof(char) * 35);
     FILE *db;
-
-    char *buffer[size];
-    for (int i = 0; i < size; ++i)
-    {
-        buffer[i] = malloc(sizeof(char) * 153);
-    }
+    bool isEndRead = false;
+    char buffer[size][153];
     for (int i = 0; i < m_count; ++i)
     {
 
-        long long int file_num = (memory[i].key + 1) / size; //map to the relative file base on the key number
+        long long int file_num = memory[i].key / size; //map to the relative file base on the key number
         sprintf(db_name, "./storage/%lld", file_num);
-        if (db = fopen(db_name, "r"))
+
+        if (db = fopen(db_name, "rb"))
         {
+
             int c = 0;
             bool isFindKey = false;
-
-            while (!feof(db))
+            if (isSuccess)
+                printf("%lld\n", memory[i].key);
+            while (!isEndRead)
             {
-                fgets(buffer[c], 255, db);
-                int len = strlen(buffer[c]);
-                int end = len - 1;
+
+                if (fread(buffer[c], 149, 1, db) != 1)
+                {
+
+                    isEndRead = true;
+                    fread(buffer[c], 148, 1, db);
+                }
+
+                int end = strlen(buffer[c]) - 1;
                 if (buffer[c][end] != '\n')
                 {
                     buffer[c][end + 1] = '\n';
@@ -82,9 +87,17 @@ void mapToDataBase(myMemory *memory, int m_count)
 
                 if (memory[i].key == atoll(key_value[0]))
                 {
-
-                    sprintf(buffer[c], "%lld %s", memory[i].key, memory[i].value);
-
+                    char *expand_key = malloc(sizeof(char) * 20);
+                    sprintf(expand_key, "%lld", memory[i].key);
+                    int len = strlen(expand_key);
+                    int offset = 19 - len;
+                    for (int i = 0; i < offset; ++i)
+                    {
+                        expand_key[len++] = ' ';
+                    }
+                    expand_key[len] = '\0';
+                    sprintf(buffer[c], "%s %s", expand_key, memory[i].value);
+                    free(expand_key);
                     isFindKey = true;
                 }
                 ++c;
@@ -92,60 +105,86 @@ void mapToDataBase(myMemory *memory, int m_count)
                 free(key_value[1]);
                 free(temp);
             }
+
             fclose(db);
+            db = NULL;
+
             if (!isFindKey)
             {
 
                 //insert key into database
                 //binaryInsert(buffer, c, memory[i].key, memory[i].value);
-                sprintf(buffer[c], "%lld %s", memory[i].key, memory[i].value);
+                char *expand_key = malloc(sizeof(char) * 20);
+                sprintf(expand_key, "%lld", memory[i].key);
+                int len = strlen(expand_key);
+                int offset = 19 - len;
+                for (int i = 0; i < offset; ++i)
+                {
+                    expand_key[len++] = ' ';
+                }
+                expand_key[len] = '\0';
+                sprintf(buffer[c], "%s %s", expand_key, memory[i].value);
+                free(expand_key);
+
                 ++c;
             }
-            db = fopen(db_name, "w");
+            db = fopen(db_name, "wb");
+
             for (int j = 0; j < c; ++j)
             {
+
                 if (j == c - 1)
                 {
                     int end = strlen(buffer[j]) - 1;
                     buffer[j][end] = '\0';
                 }
-                fputs(buffer[j], db);
+                fwrite(buffer[j], strlen(buffer[j]), 1, db);
             }
             fclose(db);
         }
         else
         {
-            db = fopen(db_name, "w");
 
+            db = fopen(db_name, "wb");
+            char *expand_key = malloc(sizeof(char) * 20);
             char *string = malloc(sizeof(char) * 153);
-            sprintf(string, "%lld %s", memory[i].key, memory[i].value);
+            sprintf(expand_key, "%lld", memory[i].key);
+            int len = strlen(expand_key);
+            int offset = 19 - len;
+            for (int i = 0; i < offset; ++i)
+            {
+                expand_key[len++] = ' ';
+            }
+            expand_key[len] = '\0';
+            sprintf(string, "%s %s", expand_key, memory[i].value);
             int end = strlen(string) - 1;
             string[end] = '\0';
-            fputs(string, db);
+
+            fwrite(string, strlen(string), 1, db);
             fclose(db);
+            db = NULL;
             free(string);
+            free(expand_key);
         }
+        //read the next memory key value
+        isEndRead = false;
     }
 
-    for (int i = 0; i < size; ++i)
-    {
-        free(buffer[i]);
-    }
     free(db_name);
 }
 void writeToOutput(char **out_buffer, int o_count)
 {
 
     FILE *output;
-    if (output = fopen(output_file, "r"))
+    if (output = fopen(output_file, "rb"))
     {
         fclose(output);
-        output = fopen(output_file, "a");
+        output = fopen(output_file, "ab");
     }
     else
-        output = fopen(output_file, "w");
+        output = fopen(output_file, "wb");
     for (int i = 0; i < o_count; ++i)
-        fputs(out_buffer[i], output);
+        fwrite(out_buffer[i], strlen(out_buffer[i]), 1, output);
     fclose(output);
 }
 char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
@@ -153,10 +192,10 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
 
     //first see memory
     long long int file_num;
-    FILE *input;
+    FILE *db;
     char *file = malloc(sizeof(char) * 35);
     char *buffer = malloc(sizeof(char) * 153);
-
+    bool isEndRead = false;
     for (int i = m_count - 1; i >= 0; --i)
     {
 
@@ -169,16 +208,19 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
             return memory[i].value;
         }
     }
-
     //then see the database
-    file_num = (compare_key + 1) / size; //map to the relative file base on the key number
+    file_num = compare_key / size; //map to the relative file base on the key number
     sprintf(file, "./storage/%lld", file_num);
-
-    if (input = fopen(file, "r"))
+    if (db = fopen(file, "rb"))
     {
-        while (!feof(input))
+        while (!isEndRead)
         {
-            fgets(buffer, 255, input);
+            if (fread(buffer, 149, 1, db) != 1)
+            {
+                isEndRead = true;
+                fread(buffer, 148, 1, db);
+            }
+
             int len = strlen(buffer);
             int c = 0;
             char *key_value[2];
@@ -190,6 +232,7 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
                 strcpy(key_value[c++], token);
                 token = strtok(NULL, " ");
             }
+
             if (compare_key == atoll(key_value[0]))
             {
                 int end = strlen(key_value[1]) - 1;
@@ -201,7 +244,7 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
                 free(file);
                 free(buffer);
                 free(key_value[0]);
-                fclose(input);
+                fclose(db);
                 return key_value[1];
             }
             free(key_value[0]);
@@ -209,7 +252,7 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
         }
         free(file);
         free(buffer);
-        fclose(input);
+        fclose(db);
         return "EMPTY\n";
     }
     else
@@ -221,10 +264,9 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
 }
 void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long long int end, char **out_buffer, int *o_count)
 {
-    FILE *input;
-    long long int file_num;
+    FILE *db;
+    bool isEndRead = false;
     int range = end - begin + 1;
-
     char *buffer[range];
     char *input_string = malloc(sizeof(char) * 153);
     char *file = malloc(sizeof(char) * 35);
@@ -234,21 +276,23 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
         buffer[i] = malloc(sizeof(char) * 153);
         strcpy(buffer[i], "EMPTY\n");
     }
-
     //scan may cross file!!!!!!
     long long int f1 = begin / size;
     long long int f2 = end / size;
     for (long long int i = f1; i <= f2; ++i)
     {
-        /*find the range of file we need to search*/
         sprintf(file, "./storage/%lld", i);
-        if (input = fopen(file, "r"))
+        //printf("file num=%lld\n", file_num);
+        if (db = fopen(file, "r"))
         {
-            while (!feof(input))
+            while (!isEndRead)
             {
-
-                fgets(input_string, 153, input);
-
+                if (fread(input_string, 149, 1, db) != 1)
+                {
+                    isEndRead = true;
+                    fread(input_string, 148, 1, db);
+                }
+                //printf("%s\n", input_string);
                 int c = 0;
                 char *token = strtok(input_string, " ");
                 key_value[0] = malloc(sizeof(char) * 30);
@@ -260,7 +304,6 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
                     token = strtok(NULL, " ");
                 }
                 long long int key = atoll(key_value[0]);
-
                 if (key >= begin && key <= end)
                 {
 
@@ -282,14 +325,15 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
                 // if (key > end)
                 //     break;
             }
-            fclose(input);
+            fclose(db);
         }
+        //scan mat cross file!!!
+        isEndRead = false;
     }
 
     //see memory because memory is newest;
     for (int i = 0; i < m_count; ++i)
     {
-
         long long int key = memory[i].key;
         if (key >= begin && key <= end)
         {
@@ -303,6 +347,7 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
             }
         }
     }
+
     for (int i = 0; i < range; ++i)
     {
 
@@ -312,14 +357,18 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
             *o_count = 0;
         }
         strcpy(out_buffer[*o_count], buffer[i]);
-        *o_count += 1;
+        ++*o_count;
     }
+
+    // for (int i = 0; i < range; ++i)
+    //     free(buffer[i]);
 }
 void exeInstr(char **instr, myMemory *memory, int *m_count, char **out_buffer, int *out_count)
 {
 
     if (strcmp(instr[0], "PUT") == 0)
     {
+
         long long int k = atoll(instr[1]);
         memory[*m_count].key = k;
 
@@ -331,10 +380,14 @@ void exeInstr(char **instr, myMemory *memory, int *m_count, char **out_buffer, i
             instr[2][end + 2] = '\0';
         }
         strcpy(memory[*m_count].value, instr[2]);
+
         *m_count += 1;
         if (*m_count >= size)
         {
+
             mapToDataBase(memory, *m_count);
+            if (isSuccess)
+                printf("successful\n");
             *m_count = 0;
         }
     }
@@ -360,29 +413,21 @@ void exeInstr(char **instr, myMemory *memory, int *m_count, char **out_buffer, i
         long long int begin = atoll(instr[1]);
         long long int end = atoll(instr[2]);
         scanFromeDatabase(memory, *m_count, begin, end, out_buffer, out_count);
+        isSuccess = true;
     }
-}
-void substr(char *dest, const char *src, unsigned int start, unsigned int cnt)
-{
-    strncpy(dest, src + start, cnt);
-    dest[cnt] = 0;
 }
 int main(int argc, char *argv[])
 {
     printf("pid=%d\n", getpid());
     char *folder = "storage";
-    char *input_file = malloc(sizeof(char) * 10);
-    output_file = malloc(sizeof(char) * 10);
+    char *input_file = "hw3example.input";
     char *input_string = malloc(sizeof(char) * 255);
     char *instr[3];
     char *out_buffer[out_buffer_size];
-    FILE *input;
+    FILE *input = fopen(input_file, "r");
     myMemory *memory = malloc(sizeof(myMemory) * size);
     int m_count = 0;
     int out_count = 0;
-    substr(input_file, argv[1], 2, 7);
-    sprintf(output_file, "%c.output", input_file[0]);
-    input = fopen(input_file, "r");
     mkdir(folder, 0777);
     for (int i = 0; i < out_buffer_size; ++i)
         out_buffer[i] = malloc(sizeof(char) * 130);
@@ -404,7 +449,8 @@ int main(int argc, char *argv[])
         exeInstr(instr, memory, &m_count, out_buffer, &out_count);
     }
     fclose(input);
-    //rest in output_buffer
+    //offsett in output_buffer
+
     writeToOutput(out_buffer, out_count);
     free(memory);
     for (int i = 0; i < out_buffer_size; ++i)
