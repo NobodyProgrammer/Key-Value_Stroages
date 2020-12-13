@@ -6,10 +6,10 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
-int size = 10000;
-int out_buffer_size = 10000;
+int size = 100;
+int out_buffer_size = 100;
 int per = 2;
-char *output_file = "1.output";
+char *output_file = "1_1.output";
 struct myMemory
 {
     /* data */
@@ -389,10 +389,11 @@ int main(int argc, char *argv[])
         exeInstr(instr, memory, &m_count, out_buffer, &out_count);
     }
     fclose(input);
-
+    printf("%d\n", out_count);
     //rest in output_buffer
     writeToOutput(out_buffer, out_count);
     free(memory);
     for (int i = 0; i < out_buffer_size; ++i)
         free(out_buffer[i]);
+    return 0;
 }
