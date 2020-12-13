@@ -6,8 +6,8 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
-int size = 1000000;
-int out_buffer_size = 2;
+int size = 10000;
+int out_buffer_size = 10000;
 int per = 2;
 char *output_file = "1.output";
 struct myMemory
@@ -79,6 +79,7 @@ void mapToDataBase(myMemory *memory, int m_count)
                     strcpy(key_value[c2++], token);
                     token = strtok(NULL, " ");
                 }
+
                 if (memory[i].key == atoll(key_value[0]))
                 {
 
@@ -134,7 +135,15 @@ void mapToDataBase(myMemory *memory, int m_count)
 }
 void writeToOutput(char **out_buffer, int o_count)
 {
-    FILE *output = fopen(output_file, "a");
+
+    FILE *output;
+    if (output = fopen(output_file, "r"))
+    {
+        fclose(output);
+        output = fopen(output_file, "a");
+    }
+    else
+        output = fopen(output_file, "w");
     for (int i = 0; i < o_count; ++i)
         fputs(out_buffer[i], output);
     fclose(output);
@@ -148,7 +157,7 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
     char *file = malloc(sizeof(char) * 35);
     char *buffer = malloc(sizeof(char) * 153);
 
-    for (int i = 0; i < m_count; ++i)
+    for (int i = m_count - 1; i >= 0; --i)
     {
 
         //i just read from the end to begin,so it is the newest
@@ -201,14 +210,13 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
         free(file);
         free(buffer);
         fclose(input);
-        return "EMPTY!\n";
+        return "EMPTY\n";
     }
     else
     {
         free(file);
         free(buffer);
-        //fclose(input);
-        return "EMPTY!\n";
+        return "EMPTY\n";
     }
 }
 void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long long int end, char **out_buffer, int *o_count)
@@ -269,8 +277,9 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
             // if (key > end)
             //     break;
         }
+        fclose(input);
     }
-    fclose(input);
+
     //see memory because memory is newest;
     for (int i = 0; i < m_count; ++i)
     {
@@ -317,7 +326,7 @@ void exeInstr(char **instr, myMemory *memory, int *m_count, char **out_buffer, i
         }
         strcpy(memory[*m_count].value, instr[2]);
         *m_count += 1;
-        if (*m_count >= 10)
+        if (*m_count >= size)
         {
             mapToDataBase(memory, *m_count);
             *m_count = 0;
@@ -347,10 +356,11 @@ void exeInstr(char **instr, myMemory *memory, int *m_count, char **out_buffer, i
         scanFromeDatabase(memory, *m_count, begin, end, out_buffer, out_count);
     }
 }
-int main()
+int main(int argc, char *argv[])
 {
+    printf("pid=%d\n", getpid());
     char *folder = "storage";
-    char *input_file = "hw3example.input";
+    char *input_file = "1.input";
     char *input_string = malloc(sizeof(char) * 255);
     char *instr[3];
     char *out_buffer[out_buffer_size];
@@ -363,8 +373,10 @@ int main()
         out_buffer[i] = malloc(sizeof(char) * 130);
     for (int i = 0; i < 3; ++i)
         instr[i] = malloc(sizeof(char) * 130);
+
     while (!feof(input))
     {
+
         fgets(input_string, 255, input);
         char *token = strtok(input_string, " ");
         int count = 0;
