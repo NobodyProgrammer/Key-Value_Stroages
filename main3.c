@@ -6,6 +6,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
+#include <time.h> 
 int size = 10000;
 int out_buffer_size = 10000;
 int per = 2;
@@ -51,7 +52,7 @@ void mapToDataBase(myMemory *memory, int m_count)
     {
 
         long long int file_num = (memory[i].key + 1) / size; //map to the relative file base on the key number
-        sprintf(db_name, "./storage/%lld", file_num);
+        sprintf(db_name, "./storage3/%lld", file_num);
         if (db = fopen(db_name, "r"))
         {
             int c = 0;
@@ -172,7 +173,7 @@ char *getFromDataBase(myMemory *memory, int m_count, long long int compare_key)
 
     //then see the database
     file_num = (compare_key + 1) / size; //map to the relative file base on the key number
-    sprintf(file, "./storage/%lld", file_num);
+    sprintf(file, "./storage3/%lld", file_num);
 
     if (input = fopen(file, "r"))
     {
@@ -241,7 +242,7 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
     for (long long int i = f1; i <= f2; ++i)
     {
         /*find the range of file we need to search*/
-        sprintf(file, "./storage/%lld", i);
+        sprintf(file, "./storage3/%lld", i);
         if (input = fopen(file, "r"))
         {
             while (!feof(input))
@@ -369,8 +370,10 @@ void substr(char *dest, const char *src, unsigned int start, unsigned int cnt)
 }
 int main(int argc, char *argv[])
 {
+    clock_t START,END;
+	START = clock();
     printf("pid=%d\n", getpid());
-    char *folder = "storage";
+    char *folder = "storage3";
     char *input_file = malloc(sizeof(char) * 10);
     output_file = malloc(sizeof(char) * 10);
     char *input_string = malloc(sizeof(char) * 255);
@@ -383,7 +386,7 @@ int main(int argc, char *argv[])
     substr(input_file, argv[1], 2, 7);
     sprintf(output_file, "%c.output", input_file[0]);
     input = fopen(input_file, "r");
-    mkdir(folder, 0777);
+    mkdir(folder);
     for (int i = 0; i < out_buffer_size; ++i)
         out_buffer[i] = malloc(sizeof(char) * 130);
     for (int i = 0; i < 3; ++i)
@@ -409,5 +412,7 @@ int main(int argc, char *argv[])
     free(memory);
     for (int i = 0; i < out_buffer_size; ++i)
         free(out_buffer[i]);
+    END = clock();
+    printf("spend time=%d",(END-START)/CLOCKS_PER_SEC);
     return 0;
 }
