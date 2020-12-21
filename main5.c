@@ -6,8 +6,10 @@
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
-int size = 10000;
-int out_buffer_size = 10000;
+#include <time.h> 
+#include<signal.h>
+int size = 100000;
+int out_buffer_size = 100000;
 int folder_num = 0;
 char *output_file;
 struct stat st = {0};
@@ -20,8 +22,9 @@ struct myMemory
 typedef struct myMemory myMemory;
 void mapToDataBase(myMemory *memory, int m_count)
 {
+
     char *db_name = malloc(sizeof(char) * 35);
-    strcpy(db_name, "./storage");
+    strcpy(db_name, "./storage2");
     FILE *db;
     char *buffer = malloc(sizeof(char) * 153);
     char path[30];
@@ -35,7 +38,7 @@ void mapToDataBase(myMemory *memory, int m_count)
         if (stat(db_name, &st) == -1)
         {
             //printf("%d\n", ++folder_num);
-            mkdir(db_name, 0777);
+            mkdir(db_name);
         }
         sprintf(path, "/%lld", file);
         strcat(db_name, path);
@@ -80,7 +83,7 @@ void mapToDataBase(myMemory *memory, int m_count)
             fclose(db);
             free(string);
         }
-        strcpy(db_name, "./storage");
+        strcpy(db_name, "./storage2");
     }
     free(db_name);
 }
@@ -105,7 +108,7 @@ void getFromDataBase(myMemory *memory, int m_count, long long int compare_key, c
     char *db_name = malloc(sizeof(char) * 35);
     char *buffer = malloc(sizeof(char) * 153);
     char path[30];
-    strcpy(db_name, "./storage");
+    strcpy(db_name, "./storage2");
     //first see memory
     for (int i = m_count - 1; i >= 0; --i)
     {
@@ -121,7 +124,7 @@ void getFromDataBase(myMemory *memory, int m_count, long long int compare_key, c
             return;
         }
     }
-
+    //printf("fuck");
     //then see the database
     long long int key = compare_key;
     long long int folder = key / size; //map to the relative folder/file base on the key number
@@ -189,7 +192,7 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
     char *db_name = malloc(sizeof(char) * 35);
     char *key_value[2];
     char path[30];
-    strcpy(db_name, "./storage");
+    strcpy(db_name, "./storage2");
     for (int i = 0; i < range; ++i)
     {
         buffer[i] = malloc(sizeof(char) * 153);
@@ -246,7 +249,7 @@ void scanFromeDatabase(myMemory *memory, int m_count, long long int begin, long 
                 fclose(db);
             }
         }
-        strcpy(db_name, "./storage");
+        strcpy(db_name, "./storage2");
     }
 
     //see memory because memory is newest;
@@ -331,8 +334,10 @@ void substr(char *dest, const char *src, unsigned int start, unsigned int cnt)
 }
 int main(int argc, char *argv[])
 {
+   clock_t START,END;
+	START = clock();
     printf("pid=%d\n", getpid());
-    char *folder = "storage";
+    char *folder = "storage2";
     char *input_file = malloc(sizeof(char) * 20);
     output_file = malloc(sizeof(char) * 10);
     char *input_string = malloc(sizeof(char) * 255);
@@ -347,7 +352,7 @@ int main(int argc, char *argv[])
     substr(input_file, argv[1], 2, 7);
     sprintf(output_file, "%c.output", input_file[0]);
     input = fopen(input_file, "r");
-    mkdir(folder, 0777);
+    mkdir(folder);
     for (int i = 0; i < out_buffer_size; ++i)
         out_buffer[i] = malloc(sizeof(char) * 130);
     for (int i = 0; i < 3; ++i)
@@ -373,5 +378,7 @@ int main(int argc, char *argv[])
     free(memory);
     for (int i = 0; i < out_buffer_size; ++i)
         free(out_buffer[i]);
+    END = clock();
+    printf("spend time=%d",(END-START)/CLOCKS_PER_SEC);
     return 0;
 }
